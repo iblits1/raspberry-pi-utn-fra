@@ -1,0 +1,86 @@
+Requisitos del Proyecto
+Hardware:
+Servidor (Raspberry Pi o una computadora con Bluetooth)
+Adaptador Bluetooth (si tu servidor no tiene uno integrado)
+Software:
+Sistema Operativo (Raspbian para Raspberry Pi, Ubuntu, etc.)
+Librerías y herramientas Bluetooth (BlueZ, PyBluez)
+Lenguaje de programación (Python)
+Base de datos (SQLite, MySQL, PostgreSQL)
+Pasos del Proyecto
+1. Configuración del Hardware
+Asegúrate de que tu servidor tenga un adaptador Bluetooth funcional.
+Instala y configura el sistema operativo.
+2. Instalación de BlueZ y herramientas necesarias
+BlueZ es la pila de protocolos oficial de Bluetooth para Linux. Puedes instalarla con:
+
+bash
+Copiar código
+sudo apt-get update
+sudo apt-get install bluez
+3. Instalación de PyBluez
+PyBluez es una librería de Python que permite interactuar con dispositivos Bluetooth:
+
+bash
+Copiar código
+pip install pybluez
+4. Configuración del Servidor Bluetooth
+Escribe un script en Python que configure tu servidor como un punto de acceso Bluetooth y registre las conexiones. Aquí tienes un ejemplo básico:
+
+python
+Copiar código
+import bluetooth
+import time
+import sqlite3
+
+# Configurar la base de datos
+conn = sqlite3.connect('bluetooth_connections.db')
+c = conn.cursor()
+c.execute('''CREATE TABLE IF NOT EXISTS connections
+             (address TEXT, connect_time REAL, disconnect_time REAL)''')
+conn.commit()
+
+server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+server_sock.bind(("", bluetooth.PORT_ANY))
+server_sock.listen(1)
+
+port = server_sock.getsockname()[1]
+print(f"Esperando conexiones en el puerto {port}")
+
+while True:
+    client_sock, client_info = server_sock.accept()
+    print(f"Conexión aceptada de {client_info}")
+
+    connect_time = time.time()
+    
+    try:
+        while True:
+            data = client_sock.recv(1024)
+            if not data:
+                break
+    except IOError:
+        pass
+
+    disconnect_time = time.time()
+
+    # Guardar los datos en la base de datos
+    c.execute("INSERT INTO connections (address, connect_time, disconnect_time) VALUES (?, ?, ?)",
+              (client_info[0], connect_time, disconnect_time))
+    conn.commit()
+
+    print(f"Desconectado de {client_info}")
+    client_sock.close()
+
+server_sock.close()
+conn.close()
+5. Iniciando el Servidor
+Ejecuta tu script para iniciar el servidor y esperar conexiones. Asegúrate de que los dispositivos Bluetooth puedan descubrir y conectarse al servidor.
+
+6. Verificación y Monitoreo
+Verifica que las conexiones se registren correctamente en la base de datos. Puedes usar herramientas de administración de bases de datos como SQLite Browser para revisar los registros.
+
+Consideraciones Adicionales
+Seguridad: Asegúrate de implementar medidas de seguridad para evitar conexiones no autorizadas.
+Optimización: Dependiendo del número de conexiones esperadas, podrías necesitar optimizar la base de datos y el manejo de conexiones.
+Interfaz de Usuario: Si deseas una interfaz para ver y gestionar las conexiones, podrías desarrollar una aplicación web o móvil.
+Este esquema te proporciona una base sólida para comenzar tu proyecto. Adapta y expande el código según tus necesidades específicas y los requisitos del entorno en el que estés trabajando.
